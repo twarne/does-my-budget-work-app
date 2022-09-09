@@ -38,7 +38,8 @@
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "remix-auth": "^3.2.2",
-    "tiny-invariant": "^1.2.0"
+    "tiny-invariant": "^1.2.0",
+    "ynab": "^1.28.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^6.3.1",

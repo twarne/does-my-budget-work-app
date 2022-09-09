@@ -69,3 +69,17 @@ export function useUser(): User {
 export function validateEmail(email: unknown): email is string {
   return typeof email === "string" && email.length > 3 && email.includes("@");
 }
+
+let amountFormatter = new Intl.NumberFormat("en-us", { style: "currency", currency: "USD" });
+
+export function formatAmount(ynabAmount: number): string {
+  const adjustedAmount = ynabAmount / 1000;
+  if (adjustedAmount === 0) {
+    return "$ -";
+  }
+  if (adjustedAmount < 0) {
+    return amountFormatter.format(adjustedAmount);
+  }
+
+  return amountFormatter.format(adjustedAmount);
+}

@@ -1,4 +1,5 @@
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
+import { access } from "fs";
 import invariant from "tiny-invariant";
 
 import type { User } from "~/models/user.server";
@@ -18,6 +19,8 @@ export const sessionStorage = createCookieSessionStorage({
 });
 
 const USER_SESSION_KEY = "userId";
+const ACCESS_TOKEN_KEY = "accessToken";
+const BUDGET_ID_KEY = "budgetId";
 
 export async function getSession(request: Request) {
   const cookie = request.headers.get("Cookie");
@@ -30,6 +33,14 @@ export async function getUserId(
   const session = await getSession(request);
   const userId = session.get(USER_SESSION_KEY);
   return userId;
+}
+
+export async function getAccessToken(
+  request: Request
+): Promise<string | undefined> {
+  const session = await getSession(request);
+  const accessToken = session.get(ACCESS_TOKEN_KEY);
+  return accessToken;
 }
 
 export async function getUser(request: Request) {
@@ -54,6 +65,18 @@ export async function requireUserId(
   return userId;
 }
 
+export async function requireAccessToken(
+  request: Request,
+  redirectTo: string = new URL(request.url).pathname
+) {
+  const accessToken = await getAccessToken(request);
+  if (!accessToken) {
+    const searchParams = new URLSearchParams([["redirectTo", redirectTo]]);
+    throw redirect(`/accessToken?${searchParams}`);
+  }
+  return accessToken;
+}
+
 export async function requireUser(request: Request) {
   const userId = await requireUserId(request);
 
@@ -61,6 +84,46 @@ export async function requireUser(request: Request) {
   if (user) return user;
 
   throw await logout(request);
+}
+
+export async function createAccessTokenSession({
+  request,
+  accessToken,
+  redirectTo,
+}: {
+  request: Request;
+  accessToken: string;
+  redirectTo: string;
+}) {
+  const session = await getSession(request);
+  session.set(ACCESS_TOKEN_KEY, accessToken);
+  return redirect(redirectTo, {
+    headers: {
+      "Set-Cookie": await sessionStorage.commitSession(session, {
+        maxAge: 60 * 60 * 24 * 7,
+      }),
+    },
+  });
+}
+
+export async function updateSessionWithBudget({
+  request,
+  budgetId,
+  redirectTo,
+}: {
+  request: Request;
+  budgetId: string;
+  redirectTo: string;
+}) {
+  const session = await getSession(request);
+  session.set(BUDGET_ID_KEY, budgetId);
+  return redirect(redirectTo, {
+    headers: {
+      "Set-Cookie": await sessionStorage.commitSession(session, {
+        maxAge: 60 * 60 * 24 * 7,
+      }),
+    },
+  });
 }
 
 export async function createUserSession({
@@ -89,6 +152,7 @@ export async function createUserSession({
 
 export async function logout(request: Request) {
   const session = await getSession(request);
+  console.log("Removing session");
   return redirect("/", {
     headers: {
       "Set-Cookie": await sessionStorage.destroySession(session),
